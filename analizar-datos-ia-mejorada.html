@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analizar datos con herramientas de IA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0B1F33;
+  --surf:#122540;
+  --surf2:#1a3050;
+  --border:#1e3d60;
+  --teal:#15A6A6;
+  --teal2:#0d7a7a;
+  --blue:#2364AA;
+  --purple:#6D28D9;
+  --amber:#F59E0B;
+  --orange:#C2410C;
+  --green:#10B981;
+  --red:#EF4444;
+  --text:#F8FAFC;
+  --muted:#7fa8c9;
+  --soft:#DFF7F7;
+  --mono:'JetBrains Mono',monospace;
+}
+
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+
+.deck{width:100%;height:100%;position:relative}
+
+.slide{
+  position:absolute;inset:0;
+  background:var(--bg);
+  display:none;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  padding:4vw 5vw;
+  overflow:hidden;
+}
+.slide.active{display:flex}
+
+/* subtle grid bg */
+.slide::before{
+  content:'';
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(21,166,166,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(21,166,166,.04) 1px,transparent 1px);
+  background-size:60px 60px;
+  pointer-events:none;
+}
+
+/* NAV */
+#nav{
+  position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:1rem;
+  background:rgba(18,37,64,.9);
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:.5rem 1.2rem;
+  z-index:100;
+  backdrop-filter:blur(10px);
+}
+#nav button{
+  background:none;border:none;color:var(--muted);
+  font-size:1.1rem;cursor:pointer;padding:.2rem .5rem;
+  border-radius:6px;transition:color .15s,background .15s;
+}
+#nav button:hover{color:var(--text);background:var(--surf2)}
+#counter{color:var(--text);font-size:.8rem;font-family:var(--mono);min-width:4rem;text-align:center}
+#fs-btn{font-size:.85rem!important}
+
+/* TYPOGRAPHY */
+.label{
+  font-size:.68rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--teal);margin-bottom:.7rem;
+  display:flex;align-items:center;gap:.5rem;
+}
+.label::before{content:'';width:20px;height:2px;background:var(--teal);border-radius:2px}
+
+h1{font-size:clamp(2rem,4.5vw,3.8rem);font-weight:900;letter-spacing:-.03em;line-height:1.1;color:var(--text)}
+h1 em{font-style:normal;color:var(--teal)}
+h2{font-size:clamp(1.4rem,3vw,2.4rem);font-weight:800;letter-spacing:-.025em;line-height:1.2;color:var(--text)}
+h2 em{font-style:normal;color:var(--teal)}
+h3{font-size:clamp(1rem,2vw,1.4rem);font-weight:700;color:var(--text)}
+p,li{font-size:clamp(.82rem,1.4vw,1.05rem);line-height:1.6;color:var(--muted)}
+strong{color:var(--text);font-weight:600}
+
+.subtitle{font-size:clamp(.95rem,1.8vw,1.3rem);color:var(--muted);max-width:700px;text-align:center;line-height:1.6;margin-top:.8rem}
+.center{text-align:center;align-items:center;display:flex;flex-direction:column}
+
+/* CHIPS */
+.chip{
+  display:inline-flex;align-items:center;gap:.3rem;
+  font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+  padding:.25rem .7rem;border-radius:999px;
+}
+.chip-teal{background:rgba(21,166,166,.15);color:var(--teal);border:1px solid rgba(21,166,166,.3)}
+.chip-blue{background:rgba(35,100,170,.2);color:#5b9bd5;border:1px solid rgba(35,100,170,.3)}
+.chip-purple{background:rgba(109,40,217,.2);color:#a78bfa;border:1px solid rgba(109,40,217,.3)}
+.chip-amber{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
+.chip-green{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.25)}
+.chip-red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+
+/* CARDS */
+.card{
+  background:var(--surf);border:1.5px solid var(--border);
+  border-radius:14px;padding:1.3rem 1.5rem;
+}
+.card-teal{border-color:rgba(21,166,166,.35)}
+.card-blue{border-color:rgba(35,100,170,.35)}
+.card-purple{border-color:rgba(109,40,217,.35)}
+.card-amber{border-color:rgba(245,158,11,.3)}
+.card-green{border-color:rgba(16,185,129,.3)}
+.card-red{border-color:rgba(239,68,68,.25)}
+
+.card-top{height:3px;border-radius:14px 14px 0 0;margin:-1.3rem -1.5rem 1rem;background:var(--teal)}
+.card-top.t{background:var(--teal)}
+.card-top.b{background:var(--blue)}
+.card-top.p{background:var(--purple)}
+.card-top.a{background:var(--amber)}
+.card-top.g{background:var(--green)}
+.card-top.r{background:var(--red)}
+
+/* STAT BOX */
+.stat{
+  background:var(--surf);border:1px solid var(--border);
+  border-radius:12px;padding:1rem 1.2rem;text-align:center;
+}
+.stat-num{font-size:clamp(1.8rem,3.5vw,3rem);font-weight:900;line-height:1;margin-bottom:.3rem}
+.stat-label{font-size:.75rem;color:var(--muted);line-height:1.4}
+
+/* FLOW */
+.flow{display:flex;align-items:stretch;gap:0}
+.flow-step{
+  flex:1;background:var(--surf);border:1.5px solid var(--border);
+  border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:.5rem;
+  position:relative;
+}
+.flow-arrow{
+  display:flex;align-items:center;justify-content:center;
+  padding:0 .4rem;color:var(--muted);font-size:1.2rem;flex-shrink:0;
+}
+.flow-num{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.flow-title{font-size:.9rem;font-weight:700;color:var(--text)}
+.flow-tool{font-family:var(--mono);font-size:.7rem;color:var(--teal);margin-top:auto}
+
+/* GRID LAYOUTS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;width:100%}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;width:100%}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;width:100%}
+.g2l{display:grid;grid-template-columns:1.3fr 1fr;gap:1.5rem;width:100%;align-items:start}
+.g2r{display:grid;grid-template-columns:1fr 1.3fr;gap:1.5rem;width:100%;align-items:start}
+
+/* QUOTE */
+.quote{
+  border-left:3px solid var(--teal);padding:1rem 1.5rem;
+  background:rgba(21,166,166,.07);border-radius:0 10px 10px 0;
+}
+.quote p{color:var(--text);font-size:clamp(.9rem,1.5vw,1.1rem);font-style:italic;line-height:1.6}
+.quote cite{font-size:.72rem;color:var(--teal);font-style:normal;margin-top:.5rem;display:block}
+
+/* RISK */
+.risk-row{display:flex;gap:.7rem;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid var(--border)}
+.risk-row:last-child{border:none}
+.risk-icon{font-size:1.1rem;flex-shrink:0;margin-top:.1rem}
+.risk-content h4{font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.2rem}
+.risk-content p{font-size:.78rem;color:var(--muted);line-height:1.5}
+
+/* TOOL SLIDE */
+.tool-header{display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem}
+.tool-icon{
+  width:52px;height:52px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;flex-shrink:0;
+}
+
+/* BULLET */
+ul.clean{list-style:none;display:flex;flex-direction:column;gap:.5rem}
+ul.clean li{display:flex;gap:.6rem;align-items:flex-start}
+ul.clean li::before{content:'→';color:var(--teal);font-weight:700;flex-shrink:0;margin-top:.05rem}
+
+/* REF */
+.ref{font-size:.68rem;color:var(--muted);font-family:var(--mono);line-height:1.6;padding:.5rem .8rem;background:var(--surf);border-radius:8px;border:1px solid var(--border)}
+
+/* WIDE slide content wrapper */
+.content{width:100%;max-width:1300px;display:flex;flex-direction:column;gap:1.2rem}
+
+/* TITLE SLIDE ACCENT LINE */
+.accent-line{width:60px;height:4px;background:var(--teal);border-radius:2px;margin:.8rem 0}
+
+/* TOOL PILL ROW */
+.pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.3rem}
+.pill{font-family:var(--mono);font-size:.7rem;font-weight:500;padding:.2rem .55rem;border-radius:6px}
+.pill-t{background:rgba(21,166,166,.12);color:var(--teal);border:1px solid rgba(21,166,166,.2)}
+.pill-a{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.15)}
+.pill-p{background:rgba(109,40,217,.12);color:#a78bfa;border:1px solid rgba(109,40,217,.2)}
+.pill-g{background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.15)}
+</style>
+</head>
+<body>
+<div class="deck">
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 1 — TITLE
+═══════════════════════════════════════════════ -->
+<div class="slide active center">
+  <div class="content" style="align-items:center;text-align:center;max-width:900px">
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center">
+      <span class="chip chip-teal">VOSviewer</span>
+      <span class="chip chip-blue">Python + IA</span>
+      <span class="chip chip-amber">Power BI</span>
+      <span class="chip chip-purple">HeyGen · ElevenLabs</span>
+      <span class="chip chip-green">Chats multimodales</span>
+    </div>
+    <h1 style="margin-top:1rem">Analizar datos con<br><em>herramientas de IA</em></h1>
+    <div class="accent-line"></div>
+    <p class="subtitle">Una ruta para buscar, organizar, analizar, visualizar y comunicar información con rigor metodológico.</p>
+    <div style="margin-top:1.5rem;padding:1rem 1.5rem;background:rgba(21,166,166,.08);border:1px solid rgba(21,166,166,.2);border-radius:12px;max-width:620px">
+      <p style="color:var(--text);font-size:clamp(.85rem,1.4vw,1rem);font-style:italic">"La IA no reemplaza el pensamiento analítico; lo vuelve más exigente, más rápido y más interdisciplinar."</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 2 — FLUJO
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div>
+      <div class="label">Marco general</div>
+      <h2>Del dato al <em>conocimiento comunicado</em></h2>
+      <p style="margin-top:.4rem">La IA acompaña el flujo completo, pero el criterio humano define el sentido del análisis.</p>
+    </div>
+    <div class="flow">
+      <div class="flow-step card-teal">
+        <div class="flow-num" style="color:var(--teal)">Etapa 1</div>
+        <div class="flow-title">Buscar</div>
+        <p style="font-size:.78rem">Literatura, bases de datos, fuentes iniciales</p>
+        <div class="pill-row">
+          <span class="pill pill-t">Elicit</span>
+          <span class="pill pill-t">Consensus</span>
+          <span class="pill pill-t">VOSviewer</span>
+        </div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step card-blue">
+        <div class="flow-num" style="color:#5b9bd5">Etapa 2</div>
+        <div class="flow-title">Organizar</div>
+        <p style="font-size:.78rem">Limpieza, estructura, metadatos</p>
+        <div class="pill-row">
+          <span class="pill pill-t" style="background:rgba(35,100,170,.12);color:#5b9bd5;border-color:rgba(35,100,170,.2)">Zotero + IA</span>
+          <span class="pill pill-t" style="background:rgba(35,100,170,.12);color:#5b9bd5;border-color:rgba(35,100,170,.2)">Notion AI</span>
+        </div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step card-purple">
+        <div class="flow-num" style="color:#a78bfa">Etapa 3</div>
+        <div class="flow-title">Analizar</div>
+        <p style="font-size:.78rem">Código, modelos, patrones estadísticos</p>
+        <div class="pill-row">
+          <span class="pill pill-p">Python + LLM</span>
+          <span class="pill pill-p">R + Copilot</span>
+        </div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step card-amber">
+        <div class="flow-num" style="color:var(--amber)">Etapa 4</div>
+        <div class="flow-title">Visualizar</div>
+        <p style="font-size:.78rem">Dashboards, gráficos publicables</p>
+        <div class="pill-row">
+          <span class="pill pill-a">Power BI</span>
+          <span class="pill pill-a">Tableau AI</span>
+        </div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step card-green">
+        <div class="flow-num" style="color:var(--green)">Etapa 5</div>
+        <div class="flow-title">Comunicar</div>
+        <p style="font-size:.78rem">Avatares, voz, narrativas, presentaciones</p>
+        <div class="pill-row">
+          <span class="pill pill-g">HeyGen</span>
+          <span class="pill pill-g">ElevenLabs</span>
+        </div>
+      </div>
+    </div>
+    <div class="quote">
+      <p>El valor de la IA no está solo en generar resultados, sino en formular mejores preguntas, validar con más cuidado y comunicar con mayor claridad.</p>
+      <cite>Bail, C.A. (2024). "Can Generative AI improve social science?" PNAS, 121(21).</cite>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 3 — EVIDENCIA
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div>
+      <div class="label">Evidencia empírica 2023–2025</div>
+      <h2>¿Qué aporta la IA al <em>análisis académico</em>?</h2>
+    </div>
+    <div class="g3">
+      <div class="card card-teal">
+        <div class="card-top t"></div>
+        <div class="chip chip-teal" style="margin-bottom:.7rem">Velocidad</div>
+        <h3 style="margin-bottom:.5rem">Acelera tareas técnicas</h3>
+        <p style="font-size:.82rem">LLMs generan y ejecutan flujos de análisis de datos desde instrucciones en lenguaje natural, con ciclos de corrección automáticos.</p>
+        <div class="stat" style="margin-top:.8rem">
+          <div class="stat-num" style="color:var(--teal)">37%</div>
+          <div class="stat-label">más rápido en tareas de escritura académica<br><em style="color:var(--teal);font-size:.65rem">Noy & Zhang, Science 2023 · N=758</em></div>
+        </div>
+      </div>
+      <div class="card card-purple">
+        <div class="card-top p"></div>
+        <div class="chip chip-purple" style="margin-bottom:.7rem">Eficiencia</div>
+        <h3 style="margin-bottom:.5rem">Reduce carga operativa</h3>
+        <p style="font-size:.82rem">En revisiones sistemáticas, esquemas humano–IA reducen tiempos de cribado y extracción manteniendo la necesidad de revisión experta.</p>
+        <div class="stat" style="margin-top:.8rem">
+          <div class="stat-num" style="color:#a78bfa">44%</div>
+          <div class="stat-label">reducción en tiempo de screening<br><em style="color:#a78bfa;font-size:.65rem">Wang et al., npj Digital Medicine 2025 · TrialMind</em></div>
+        </div>
+      </div>
+      <div class="card card-amber">
+        <div class="card-top a"></div>
+        <div class="chip chip-amber" style="margin-bottom:.7rem">Integración</div>
+        <h3 style="margin-bottom:.5rem">Conecta etapas del trabajo</h3>
+        <p style="font-size:.82rem">LLMs se integran a distintas fases del ciclo científico: hipótesis, búsqueda, análisis, síntesis y descubrimiento, alineados con metas humanas.</p>
+        <div class="stat" style="margin-top:.8rem">
+          <div class="stat-num" style="color:var(--amber)">79%</div>
+          <div class="stat-label">de investigadores usan LLMs regularmente<br><em style="color:var(--amber);font-size:.65rem">Perkins et al., 2024 · N=1.827 en 80 países</em></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="background:rgba(21,166,166,.06);border-color:rgba(21,166,166,.2);padding:.9rem 1.2rem">
+      <p style="color:var(--text);font-size:.85rem"><strong>Hallazgo clave (Noy & Zhang, 2023):</strong> La IA eleva más la calidad del trabajo de los <em style="color:var(--teal)">menos expertos</em> que la de los más expertos — lo que representa una oportunidad sin precedentes de democratización metodológica para universidades colombianas.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 4 — RIGOR
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div>
+      <div class="label">Condición fundamental</div>
+      <h2>Más rigor, <em>no menos método</em></h2>
+      <p style="margin-top:.3rem">La IA exige trazabilidad, validación humana y control de sesgos en cada etapa.</p>
+    </div>
+    <div class="g2">
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+        <div class="risk-row">
+          <div class="risk-icon">⚠️</div>
+          <div class="risk-content">
+            <h4>Prompt bias</h4>
+            <p>El orden, las etiquetas y el encuadre de la instrucción cambian la salida del modelo. Un prompt sesgado produce análisis sesgado.</p>
+          </div>
+        </div>
+        <div class="risk-row">
+          <div class="risk-icon">📚</div>
+          <div class="risk-content">
+            <h4>Alucinaciones y referencias falsas</h4>
+            <p>30–50% de citas generadas por ChatGPT 3.5 eran incorrectas (Weber-Wulff et al., 2023). Verificar SIEMPRE en Scholar o DOI.org.</p>
+          </div>
+        </div>
+        <div class="risk-row">
+          <div class="risk-icon">🔒</div>
+          <div class="risk-content">
+            <h4>Confidencialidad de datos</h4>
+            <p>Datos de participantes, menores o comunidades vulnerables NO deben cargarse en APIs comerciales (Ley 1581 Colombia).</p>
+          </div>
+        </div>
+        <div class="risk-row">
+          <div class="risk-icon">🔍</div>
+          <div class="risk-content">
+            <h4>Supervisión humana insuficiente</h4>
+            <p>Usuarios novatos aceptan el 78% del código generado sin revisión adecuada (Vaithilingam et al., 2024). Comprender ≠ ejecutar.</p>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.8rem">
+        <div class="card card-teal" style="padding:1rem">
+          <div class="card-top t"></div>
+          <h3 style="font-size:.95rem;margin-bottom:.5rem">Regla práctica</h3>
+          <p style="font-size:.82rem">Toda salida generada por IA debe ser verificable: <strong>fuente, dato, código, supuesto y decisión</strong>.</p>
+        </div>
+        <div class="card" style="padding:1rem">
+          <h3 style="font-size:.88rem;margin-bottom:.6rem;color:var(--amber)">Estándares 2024</h3>
+          <ul class="clean">
+            <li><p style="font-size:.78rem"><strong>Nature / Science / Cell:</strong> Los LLMs no pueden ser co-autores. Declarar uso en métodos.</p></li>
+            <li><p style="font-size:.78rem"><strong>COPE (2023):</strong> Directrices sobre IA en manuscritos académicos.</p></li>
+            <li><p style="font-size:.78rem"><strong>APA 7ª ed. (2024):</strong> Addendum sobre cómo citar outputs de IA.</p></li>
+          </ul>
+        </div>
+        <div class="stat">
+          <div class="stat-num" style="color:var(--orange)">17.5%</div>
+          <div class="stat-label">de abstracts científicos publicados en 2024 contienen marcadores de estilo de LLM no declarados<br><em style="font-size:.65rem;color:var(--orange)">Kobak et al., arXiv:2406.07016</em></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 5 — VOSviewer
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div class="tool-header">
+      <div class="tool-icon" style="background:rgba(21,166,166,.15);border:1px solid rgba(21,166,166,.3)">🗺️</div>
+      <div>
+        <div class="label" style="margin-bottom:.2rem">Herramienta 1</div>
+        <h2><em>VOSviewer</em> — Revisión sistemática y mapas bibliométricos</h2>
+      </div>
+    </div>
+    <div class="g2l">
+      <div style="display:flex;flex-direction:column;gap:.9rem">
+        <p style="font-size:.88rem">Software gratuito de la <strong>Universidad de Leiden</strong>. Construye redes bibliométricas desde Scopus, WoS, Dimensions o la API abierta de <strong>OpenAlex</strong> (+240 millones de trabajos, sin suscripción).</p>
+        <div class="card card-teal" style="padding:1rem">
+          <div class="card-top t"></div>
+          <h3 style="font-size:.88rem;margin-bottom:.6rem">Capacidades clave (v1.6.20, 2024)</h3>
+          <ul class="clean">
+            <li><p style="font-size:.78rem">Redes de <strong>coautoría, cocitación y co-ocurrencia</strong> de palabras clave</p></li>
+            <li><p style="font-size:.78rem"><strong>Overlay visualization:</strong> nodos coloreados por año → identifica temas emergentes vs. maduros</p></li>
+            <li><p style="font-size:.78rem">Compatible con Zotero, Mendeley (RIS/BibTeX)</p></li>
+            <li><p style="font-size:.78rem">Exporta en SVG/PNG para publicaciones indexadas</p></li>
+            <li><p style="font-size:.78rem">Integra con <strong>Bibliometrix (R)</strong> para análisis cuantitativo avanzado</p></li>
+          </ul>
+        </div>
+        <div class="ref">Donthu et al. (2021). J. Business Research, 133, 285–296 · +7.000 citas<br>van Eck & Waltman (2024). VOSviewer Manual. Leiden University.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.8rem">
+        <h3 style="font-size:.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:.68rem">Casos de uso universitario</h3>
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:var(--teal);font-weight:700;margin-bottom:.3rem">🎓 Tesis doctoral</p>
+          <p style="font-size:.8rem">Mapear un campo para identificar el <strong>gap de investigación</strong> y justificarlo con evidencia visual ante el comité.</p>
+        </div>
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:var(--teal);font-weight:700;margin-bottom:.3rem">🏛️ Vigilancia institucional</p>
+          <p style="font-size:.8rem">Reporte de producción científica de la universidad para el <strong>MinCiencias</strong> o plan estratégico.</p>
+        </div>
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:var(--teal);font-weight:700;margin-bottom:.3rem">📄 Artículo de revisión Q1</p>
+          <p style="font-size:.8rem">Figura bibliométrica generada con VOSviewer + PRISMA 2020 como componente metodológico del paper.</p>
+        </div>
+        <div class="stat">
+          <div class="stat-num" style="color:var(--teal)">340%</div>
+          <div class="stat-label">crecimiento en papers que declaran usar VOSviewer<br>como herramienta metodológica (2018–2023, WoS)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 6 — Python + IA
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div class="tool-header">
+      <div class="tool-icon" style="background:rgba(109,40,217,.15);border:1px solid rgba(109,40,217,.3)">🐍</div>
+      <div>
+        <div class="label" style="margin-bottom:.2rem;color:#a78bfa">Herramienta 2</div>
+        <h2><em style="color:#a78bfa">Python + IA</em> — Programación asistida y análisis reproducible</h2>
+      </div>
+    </div>
+    <div class="g2l">
+      <div style="display:flex;flex-direction:column;gap:.9rem">
+        <p style="font-size:.88rem">Investigadores sin formación computacional avanzada pueden generar, depurar y adaptar código Python con instrucciones en español, usando <strong>GPT-4o, Claude 3.7, Gemini 2.0</strong> o <strong>GitHub Copilot</strong>.</p>
+        <div class="card card-purple" style="padding:1rem">
+          <div class="card-top p"></div>
+          <h3 style="font-size:.88rem;margin-bottom:.6rem">Ecosistema 2024–2025</h3>
+          <ul class="clean">
+            <li><p style="font-size:.78rem"><strong>Advanced Data Analysis (ChatGPT):</strong> ejecuta Python en el navegador; acepta CSV, Excel, PDF</p></li>
+            <li><p style="font-size:.78rem"><strong>Claude 3.7:</strong> ventana de 200.000 tokens; razonamiento extendido para problemas estadísticos complejos</p></li>
+            <li><p style="font-size:.78rem"><strong>Jupyter AI (2024):</strong> plugin oficial para JupyterLab; genera código desde comentarios en lenguaje natural</p></li>
+            <li><p style="font-size:.78rem"><strong>Pandas AI:</strong> preguntas en lenguaje natural sobre DataFrames</p></li>
+            <li><p style="font-size:.78rem"><strong>Marimo (2024):</strong> notebooks reactivos y reproducibles con IA integrada</p></li>
+          </ul>
+        </div>
+        <div class="ref">Barke et al. (2023). "Grounded Copilot." OOPSLA.<br>GitHub Octoverse Report (2024). github.blog/octoverse</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.8rem">
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:#a78bfa;font-weight:700;margin-bottom:.3rem">📊 Análisis de sentimientos docentes</p>
+          <p style="font-size:.8rem">3.000 respuestas de evaluaciones → Python + LLM → clasificación automática → dashboard semestral. Costo: ~USD 2–5 en tokens.</p>
+        </div>
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:#a78bfa;font-weight:700;margin-bottom:.3rem">🏥 Datos de salud pública</p>
+          <p style="font-size:.8rem">Datos del DANE → ChatGPT Advanced Analysis → regresión de Poisson + visualizaciones publicables sin estadístico dedicado.</p>
+        </div>
+        <div class="card card-red" style="padding:.9rem">
+          <p style="font-size:.73rem;color:var(--red);font-weight:700;margin-bottom:.3rem">⚠️ Limitación crítica</p>
+          <p style="font-size:.8rem">Usuarios novatos aceptan el <strong>78% del código</strong> sin revisión suficiente. El código puede ser sintácticamente válido pero estadísticamente incorrecto.</p>
+        </div>
+        <div class="stat">
+          <div class="stat-num" style="color:#a78bfa">55%</div>
+          <div class="stat-label">del código nuevo en GitHub tiene asistencia de Copilot<br>+26% productividad en análisis de datos (GitHub 2024)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 7 — Power BI
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div class="tool-header">
+      <div class="tool-icon" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25)">📊</div>
+      <div>
+        <div class="label" style="margin-bottom:.2rem;color:var(--amber)">Herramienta 3</div>
+        <h2><em style="color:var(--amber)">Power BI + Copilot</em> — Dashboards inteligentes</h2>
+      </div>
+    </div>
+    <div class="g2l">
+      <div style="display:flex;flex-direction:column;gap:.9rem">
+        <p style="font-size:.88rem">Plataforma líder de Business Intelligence (<strong>Gartner Leader, 17 años consecutivos</strong>). Con <strong>Microsoft Copilot</strong> (GPT-4o integrado, GA desde marzo 2024), crea dashboards desde lenguaje natural.</p>
+        <div class="card card-amber" style="padding:1rem">
+          <div class="card-top a"></div>
+          <h3 style="font-size:.88rem;margin-bottom:.6rem">Capacidades Copilot 2024</h3>
+          <ul class="clean">
+            <li><p style="font-size:.78rem">Genera <strong>páginas de reporte completas</strong> desde descripción textual</p></li>
+            <li><p style="font-size:.78rem"><strong>Narrativas inteligentes:</strong> texto automático que explica tendencias y anomalías</p></li>
+            <li><p style="font-size:.78rem">Propone <strong>medidas DAX</strong> desde descripción del negocio</p></li>
+            <li><p style="font-size:.78rem"><strong>Detección de anomalías</strong> en series de tiempo con anotaciones automáticas</p></li>
+            <li><p style="font-size:.78rem">Integrado en <strong>Microsoft Fabric:</strong> pipeline completo desde datos hasta reporte</p></li>
+          </ul>
+        </div>
+        <div class="ref">Gartner Magic Quadrant for Analytics & BI (2024)<br>Microsoft Copilot Impact Study (2024). learn.microsoft.com</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.8rem">
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:var(--amber);font-weight:700;margin-bottom:.3rem">🎓 Seguimiento académico</p>
+          <p style="font-size:.8rem">Universidad conecta Power BI a Banner/SAP → tasas de permanencia por cohorte y estrato → Copilot genera resumen ejecutivo mensual para Rectoría.</p>
+        </div>
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:var(--amber);font-weight:700;margin-bottom:.3rem">🔬 Producción científica</p>
+          <p style="font-size:.8rem">API de Scopus → Power BI → factor H promedio, citaciones, tendencias por área. Acceso en tiempo real para decanos desde móvil.</p>
+        </div>
+        <div class="g2" style="gap:.6rem">
+          <div class="stat">
+            <div class="stat-num" style="color:var(--amber)">37%</div>
+            <div class="stat-label">menos tiempo en creación de reportes con Copilot</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num" style="color:var(--amber)">49%</div>
+            <div class="stat-label">menos tiempo en análisis exploratorio</div>
+          </div>
+        </div>
+        <div class="card card-red" style="padding:.7rem">
+          <p style="font-size:.75rem;color:var(--red);font-weight:600">⚠️ Copilot requiere licencia Premium ~USD 20/usuario/mes. Narrativas automáticas requieren revisión editorial.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 8 — HeyGen + ElevenLabs
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div class="tool-header">
+      <div class="tool-icon" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25)">🎬</div>
+      <div>
+        <div class="label" style="margin-bottom:.2rem;color:var(--green)">Herramienta 4</div>
+        <h2><em style="color:var(--green)">HeyGen + ElevenLabs</em> — Comunicación audiovisual de hallazgos</h2>
+      </div>
+    </div>
+    <div class="g2">
+      <div style="display:flex;flex-direction:column;gap:.8rem">
+        <div class="card card-green" style="padding:1rem">
+          <div class="card-top g"></div>
+          <h3 style="font-size:.9rem;margin-bottom:.6rem">HeyGen — Avatares IA (2024)</h3>
+          <ul class="clean">
+            <li><p style="font-size:.78rem"><strong>Avatar 3.0:</strong> movimientos corporales completos, expresiones naturales, resolución 4K</p></li>
+            <li><p style="font-size:.78rem"><strong>Video Translation:</strong> traduce grabaciones existentes al inglés, portugués, mandarín con sincronía labial &gt;95%</p></li>
+            <li><p style="font-size:.78rem"><strong>Streaming Avatar API:</strong> tutores virtuales interactivos en tiempo real</p></li>
+          </ul>
+        </div>
+        <div class="card card-teal" style="padding:1rem">
+          <div class="card-top t"></div>
+          <h3 style="font-size:.9rem;margin-bottom:.6rem">ElevenLabs — Síntesis de voz (2024)</h3>
+          <ul class="clean">
+            <li><p style="font-size:.78rem"><strong>Voice Cloning Instant:</strong> clona tu voz con 1 minuto de audio</p></li>
+            <li><p style="font-size:.78rem">Genera voz en <strong>29 idiomas</strong> manteniendo el acento y entonación originales</p></li>
+            <li><p style="font-size:.78rem">1 min de audio de alta calidad en ~<strong>8 segundos</strong> de procesamiento</p></li>
+            <li><p style="font-size:.78rem"><strong>Reader App (2025):</strong> convierte PDFs y artículos en podcasts narrados</p></li>
+          </ul>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.8rem">
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:var(--green);font-weight:700;margin-bottom:.3rem">🔬 Divulgación de investigación</p>
+          <p style="font-size:.8rem">Investigador graba 2 min de voz → avatar propio → guion de hallazgos → video en español e inglés en 20 min. Listo para YouTube o congreso virtual.</p>
+        </div>
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:var(--green);font-weight:700;margin-bottom:.3rem">🌍 Internacionalización</p>
+          <p style="font-size:.8rem">Clases magistrales en español traducidas automáticamente al inglés y portugués para estudiantes de intercambio, sin costo adicional de grabación.</p>
+        </div>
+        <div class="card" style="padding:.9rem">
+          <p style="font-size:.73rem;color:var(--green);font-weight:700;margin-bottom:.3rem">♿ Accesibilidad</p>
+          <p style="font-size:.8rem">Materiales de lectura obligatoria convertidos en audio de alta calidad para estudiantes con discapacidad visual o dislexia.</p>
+        </div>
+        <div class="card card-red" style="padding:.7rem">
+          <p style="font-size:.75rem;color:var(--red);font-weight:600">⚠️ Ética: clonación de voz/imagen sin consentimiento puede violar Ley 1581 (Colombia). Requerir consentimiento informado explícito.</p>
+        </div>
+        <div class="stat">
+          <div class="stat-num" style="color:var(--green)">10M</div>
+          <div class="stat-label">usuarios activos HeyGen 2024 · 28% sector educativo</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 9 — Chats multimodales
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div class="tool-header">
+      <div class="tool-icon" style="background:rgba(35,100,170,.15);border:1px solid rgba(35,100,170,.3)">🧠</div>
+      <div>
+        <div class="label" style="margin-bottom:.2rem;color:#5b9bd5">Herramienta 5</div>
+        <h2><em style="color:#5b9bd5">Chats generativos multimodales</em> — Análisis de imágenes y documentos</h2>
+      </div>
+    </div>
+    <div class="g3" style="gap:.9rem">
+      <div class="card card-blue" style="padding:1rem">
+        <div class="card-top b"></div>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem">
+          <span style="font-size:1.2rem">🤖</span>
+          <h3 style="font-size:.9rem">GPT-4o (OpenAI)</h3>
+        </div>
+        <ul class="clean">
+          <li><p style="font-size:.77rem">Analiza imágenes médicas, gráficos, mapas, infografías</p></li>
+          <li><p style="font-size:.77rem">Ejecuta código Python sobre archivos cargados</p></li>
+          <li><p style="font-size:.77rem"><strong>Memoria persistente</strong> entre conversaciones (2024)</p></li>
+          <li><p style="font-size:.77rem">Contexto: 128.000 tokens</p></li>
+        </ul>
+      </div>
+      <div class="card card-purple" style="padding:1rem">
+        <div class="card-top p"></div>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem">
+          <span style="font-size:1.2rem">🔮</span>
+          <h3 style="font-size:.9rem">Claude 3.7 (Anthropic)</h3>
+        </div>
+        <ul class="clean">
+          <li><p style="font-size:.77rem"><strong>Extended Thinking:</strong> razona paso a paso antes de responder</p></li>
+          <li><p style="font-size:.77rem">Contexto: <strong>200.000 tokens</strong> — lee artículos o libros completos</p></li>
+          <li><p style="font-size:.77rem">Mayor precisión en texto incrustado en imágenes (tablas, ecuaciones)</p></li>
+          <li><p style="font-size:.77rem">Computer Use (beta): opera aplicaciones de escritorio</p></li>
+        </ul>
+      </div>
+      <div class="card card-teal" style="padding:1rem">
+        <div class="card-top t"></div>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem">
+          <span style="font-size:1.2rem">💎</span>
+          <h3 style="font-size:.9rem">Gemini 2.0 Pro (Google)</h3>
+        </div>
+        <ul class="clean">
+          <li><p style="font-size:.77rem">Contexto: <strong>2 millones de tokens</strong> — el más grande disponible</p></li>
+          <li><p style="font-size:.77rem">Analiza <strong>videos de hasta 1 hora</strong> completa</p></li>
+          <li><p style="font-size:.77rem">Integración nativa con Google Workspace y Scholar</p></li>
+          <li><p style="font-size:.77rem">50 documentos de política → análisis diacrónico en minutos</p></li>
+        </ul>
+      </div>
+    </div>
+    <div class="g2" style="gap:1rem">
+      <div class="quote">
+        <p>GPT-4o identifica correctamente el tipo de gráfico estadístico el <strong>87% de las veces</strong>, pero comete errores de interpretación cuantitativa (leer valores exactos del eje) en el <strong>41% de los casos</strong>.</p>
+        <cite>Microsoft Research (2024). Benchmark de comprensión visual de gráficos científicos.</cite>
+      </div>
+      <div class="card card-red" style="padding:1rem">
+        <div class="card-top r"></div>
+        <h3 style="font-size:.88rem;margin-bottom:.5rem;color:var(--red)">Limitaciones críticas</h3>
+        <ul class="clean">
+          <li><p style="font-size:.78rem">Alucinaciones: datos incorrectos con confianza aparente</p></li>
+          <li><p style="font-size:.78rem">Sesgos visuales: interpretan mejor imágenes de contextos occidentales</p></li>
+          <li><p style="font-size:.78rem">No citar sin verificar en Google Scholar o Semantic Scholar</p></li>
+          <li><p style="font-size:.78rem">Datos sensibles: nunca en APIs comerciales</p></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 10 — CIERRE
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div class="center" style="margin-bottom:.8rem">
+      <div class="label">Síntesis</div>
+      <h2 style="text-align:center">Del dato a la <em>decisión responsable</em></h2>
+      <p style="text-align:center;max-width:600px">La IA amplifica capacidades cuando se usa con método, criterio y responsabilidad.</p>
+    </div>
+    <div class="g3">
+      <div class="card card-teal" style="padding:1.1rem">
+        <div class="card-top t"></div>
+        <div style="font-size:1.5rem;margin-bottom:.5rem">❓</div>
+        <h3 style="margin-bottom:.5rem">1. Preguntar mejor</h3>
+        <p style="font-size:.82rem">Definir propósito, contexto, variables, fuentes y criterios de evaluación <em>antes</em> de abrir el chat.</p>
+      </div>
+      <div class="card card-purple" style="padding:1.1rem">
+        <div class="card-top p"></div>
+        <div style="font-size:1.5rem;margin-bottom:.5rem">✅</div>
+        <h3 style="margin-bottom:.5rem">2. Validar siempre</h3>
+        <p style="font-size:.82rem">Contrastar datos, código, resultados, citas y supuestos contra fuentes primarias antes de decidir o publicar.</p>
+      </div>
+      <div class="card card-amber" style="padding:1.1rem">
+        <div class="card-top a"></div>
+        <div style="font-size:1.5rem;margin-bottom:.5rem">📡</div>
+        <h3 style="margin-bottom:.5rem">3. Comunicar con sentido</h3>
+        <p style="font-size:.82rem">Convertir resultados en narrativas, visualizaciones y decisiones comprensibles para la audiencia específica.</p>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="card" style="padding:1rem;background:rgba(21,166,166,.07);border-color:rgba(21,166,166,.25)">
+        <h3 style="font-size:.88rem;color:var(--teal);margin-bottom:.5rem">Competencias clave para docentes-investigadores</h3>
+        <ul class="clean">
+          <li><p style="font-size:.8rem"><strong>Literacia de prompts:</strong> saber preguntar bien es lo más crítico</p></li>
+          <li><p style="font-size:.8rem"><strong>Validación sistemática:</strong> nunca aceptar outputs sin verificar</p></li>
+          <li><p style="font-size:.8rem"><strong>Documentación:</strong> herramienta + versión + prompt + fecha</p></li>
+          <li><p style="font-size:.8rem"><strong>Criterio disciplinar:</strong> la IA necesita tu conocimiento del dominio</p></li>
+        </ul>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center">
+        <div style="text-align:center;padding:1.5rem;background:var(--surf);border:1px solid var(--border);border-radius:14px">
+          <p style="font-size:clamp(.9rem,1.6vw,1.15rem);font-style:italic;color:var(--text);line-height:1.6;max-width:360px">"La IA no reemplaza al analista: <strong>eleva la exigencia del análisis</strong>."</p>
+          <p style="font-size:.7rem;color:var(--teal);margin-top:.7rem">Síntesis de Zhang et al. (2025) · Noy & Zhang (2023) · Bail (2024)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 11 — REFERENCIAS
+═══════════════════════════════════════════════ -->
+<div class="slide">
+  <div class="content">
+    <div>
+      <div class="label">Fuentes verificadas</div>
+      <h2>Referencias <em>bibliográficas</em></h2>
+    </div>
+    <div class="g2" style="gap:1rem">
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div class="ref">Noy, S., & Zhang, W. (2023). Experimental Evidence on the Productivity Effects of Generative AI. <em>Science</em>, 381(6654), 187–192.</div>
+        <div class="ref">Wang, Z. et al. (2025). Accelerating clinical evidence synthesis with LLMs. <em>npj Digital Medicine</em>, 8, 509.</div>
+        <div class="ref">Zhang, Y. et al. (2025). Exploring the role of LLMs in the scientific method. <em>npj Artificial Intelligence</em>.</div>
+        <div class="ref">Perkins, M. et al. (2024). Academic Integrity considerations of AI LLMs. <em>J. of University Teaching & Learning Practice</em>, 21(2).</div>
+        <div class="ref">Kobak, D. et al. (2024). Delving into ChatGPT usage in academic writing through excess vocabulary. <em>arXiv:2406.07016</em>.</div>
+        <div class="ref">Bail, C.A. (2024). Can Generative AI improve social science? <em>PNAS</em>, 121(21).</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div class="ref">Brucks, M., & Toubia, O. (2025). Prompt architecture induces methodological artifacts in LLMs. <em>PLOS One</em>.</div>
+        <div class="ref">Gaebe, K., & van der Woerd, B. (2025). Evaluation of LLMs as diagnostic tool using advanced prompting. <em>PLOS One</em>.</div>
+        <div class="ref">Sollini, M. et al. (2026). Human researchers are superior to LLMs in systematic reviews. <em>Scientific Reports</em>, 16, 173.</div>
+        <div class="ref">Weber-Wulff, D. et al. (2023). Testing of detection tools for AI-generated text. <em>Int. J. Educational Integrity</em>, 19(1).</div>
+        <div class="ref">Donthu, N. et al. (2021). How to conduct a bibliometric analysis. <em>J. Business Research</em>, 133, 285–296.</div>
+        <div class="ref">COPE (2023). Authorship and AI tools. publicationethics.org · APA 7ª ed. Addendum IA (2024).</div>
+      </div>
+    </div>
+    <div class="card" style="padding:.8rem 1.2rem;background:rgba(21,166,166,.06);border-color:rgba(21,166,166,.2);text-align:center">
+      <p style="font-size:.8rem;color:var(--muted)">Gartner MQ Analytics & BI (2024) · GitHub Octoverse Report (2024) · Microsoft Copilot Impact Study (2024) · ElevenLabs State of Voice AI (2024) · HeyGen Platform Updates (2024–2025)</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- NAV BAR -->
+<div id="nav">
+  <button id="prev-btn" title="Anterior">←</button>
+  <span id="counter">1 / 11</span>
+  <button id="next-btn" title="Siguiente">→</button>
+  <button id="fs-btn" title="Pantalla completa">⛶</button>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let cur = 0;
+
+function go(n){
+  slides[cur].classList.remove('active');
+  cur = (n + slides.length) % slides.length;
+  slides[cur].classList.add('active');
+  document.getElementById('counter').textContent = (cur+1) + ' / ' + slides.length;
+}
+
+document.getElementById('prev-btn').onclick = () => go(cur - 1);
+document.getElementById('next-btn').onclick = () => go(cur + 1);
+document.getElementById('fs-btn').onclick = () => {
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+};
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') go(cur + 1);
+  if(e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(cur - 1);
+  if(e.key === 'f' || e.key === 'F') document.getElementById('fs-btn').click();
+});
+</script>
+</body>
+</html>
